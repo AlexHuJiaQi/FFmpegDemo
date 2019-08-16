@@ -26,15 +26,14 @@ public:
 
 	bool init();
 	bool deinit();
-	bool openInput();
-	bool initOutput();
-	void do_muxing();
+	bool open_input();
+	bool open_output();
+	void write_packet();
 
 public slots:
-	void readStream();
+	void read_packet();
 
 private:
-	// AVPacket pkt;
 	QList<AVPacket*> m_av_packet_list;
 	AVFormatContext* i_fmt_ctx = NULL;
 	AVFormatContext* o_fmt_ctx = NULL;

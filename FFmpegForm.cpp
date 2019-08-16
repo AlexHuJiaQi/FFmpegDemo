@@ -24,7 +24,7 @@ void FFmpegForm::onStart()
 
 	p_thread = new QThread;
 	p_worker = new FFmpegWorker;
-	connect( this, SIGNAL( start() ), p_worker, SLOT( readStream() ), Qt::QueuedConnection );
+	connect( this, SIGNAL( start() ), p_worker, SLOT( read_packet() ), Qt::QueuedConnection );
 	p_worker->moveToThread( p_thread );
 	p_thread->start();
 
@@ -32,13 +32,13 @@ void FFmpegForm::onStart()
 		p_worker->deinit();
 	}
 
-	if ( !p_worker->openInput() ) {
+	if ( !p_worker->open_input() ) {
 		p_worker->deinit();
 	}
 
 	emit start();
 
-	// p_worker->readStream();
+	// p_worker->read_packet();
 
 	pButton_start->setEnabled( false );
 	pButton_stop->setEnabled( true );
@@ -52,11 +52,11 @@ void FFmpegForm::onStop()
 	p_thread->quit();
 	p_thread->wait();
 
-	if ( !p_worker->initOutput() ) {
+	if ( !p_worker->open_output() ) {
 		p_worker->deinit();
 	}
 
-	p_worker->do_muxing();
+	p_worker->write_packet();
 	p_worker->deinit();
 
 	pButton_start->setEnabled( true );

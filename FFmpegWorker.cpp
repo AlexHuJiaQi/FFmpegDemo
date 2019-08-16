@@ -32,16 +32,11 @@ bool FFmpegWorker::deinit()
 	return true;
 }
 
-bool FFmpegWorker::openInput()
+bool FFmpegWorker::open_input()
 {
 	if ( avformat_open_input( &i_fmt_ctx, i_filename, 0, 0 ) < 0 ) {
 		fprintf( stderr, "Could not open input file '%s'", i_filename );
 		return false;
-	}
-
-	AVDictionaryEntry* tag = NULL;
-	while ( ( tag = av_dict_get( i_fmt_ctx->metadata, "", tag, AV_DICT_IGNORE_SUFFIX ) ) ) {
-		qDebug() << tag->key << tag->value;
 	}
 
 	if ( avformat_find_stream_info( i_fmt_ctx, 0 ) < 0 ) {
@@ -49,14 +44,44 @@ bool FFmpegWorker::openInput()
 		return false;
 	}
 
-	// qDebug() << av_find_best_stream( i_fmt_ctx, AVMEDIA_TYPE_VIDEO, -1, NULL, NULL, 0 );
-	// qDebug() << av_find_best_stream( i_fmt_ctx, AVMEDIA_TYPE_AUDIO, -1, NULL, NULL, 0 );
-
 	av_dump_format( i_fmt_ctx, 0, i_filename, 0 );
 	return true;
 }
 
-bool FFmpegWorker::initOutput()
+void FFmpegWorker::read_packet()
+{
+	qDebug() << __FUNCTION__ << __LINE__ << QThread::currentThreadId();
+
+	AVPacket* p_packet = nullptr;
+	double time_first  = 0;
+	double time_last   = 0;
+	double time_diff   = 0;
+	while ( !bStop ) {
+		p_packet = av_packet_alloc();
+
+		if ( av_read_frame( i_fmt_ctx, p_packet ) < 0 ) {
+			continue;
+		}
+
+		m_av_packet_list.append( p_packet );
+
+		// 计算一桢在整个视频中的时间位置
+		// 根据 pts 来计算一桢在整个视频中的时间位置：
+		// timestamp (秒) = pts * av_q2d (st->time_base)
+		time_first = ( m_av_packet_list.first()->pts ) * ( av_q2d( i_fmt_ctx->streams[m_av_packet_list.first()->stream_index]->time_base ) );
+		time_last  = ( m_av_packet_list.last()->pts ) * ( av_q2d( i_fmt_ctx->streams[m_av_packet_list.last()->stream_index]->time_base ) );
+		time_diff  = time_last - time_first;
+
+		qDebug() << "time interval: " << time_diff;
+
+		if ( time_diff >= 30 ) {
+			av_packet_free( &m_av_packet_list.first() );
+			m_av_packet_list.removeFirst();
+		}
+	}
+}
+
+bool FFmpegWorker::open_output()
 {
 	avformat_alloc_output_context2( &o_fmt_ctx, NULL, NULL, o_filename );
 
@@ -97,45 +122,7 @@ bool FFmpegWorker::initOutput()
 	return true;
 }
 
-void FFmpegWorker::readStream()
-{
-	qDebug() << __FUNCTION__ << __LINE__ << QThread::currentThreadId();
-
-	AVPacket* p_packet = nullptr;
-	double time_first  = 0;
-	double time_last   = 0;
-	double time_diff   = 0;
-	while ( !bStop ) {
-		p_packet = av_packet_alloc();
-
-		if ( av_read_frame( i_fmt_ctx, p_packet ) < 0 ) {
-			qDebug() << "##############################";
-			av_packet_free( &p_packet );
-			continue;
-		}
-
-		m_av_packet_list.append( p_packet );
-
-#if 1
-		// 计算一桢在整个视频中的时间位置
-		// 根据 pts 来计算一桢在整个视频中的时间位置：
-		// timestamp (秒) = pts * av_q2d (st->time_base)
-		time_first = ( m_av_packet_list.first()->pts ) * ( av_q2d( i_fmt_ctx->streams[m_av_packet_list.first()->stream_index]->time_base ) );
-		time_last  = ( m_av_packet_list.last()->pts ) * ( av_q2d( i_fmt_ctx->streams[m_av_packet_list.last()->stream_index]->time_base ) );
-		time_diff  = time_last - time_first;
-
-		qDebug() << "time interval: " << time_diff;
-
-		if ( time_diff >= 30 ) {
-			// av_packet_unref( m_av_packet_list.first() );
-			av_packet_free( &m_av_packet_list.first() );
-			m_av_packet_list.removeFirst();
-		}
-#endif
-	}
-}
-
-void FFmpegWorker::do_muxing()
+void FFmpegWorker::write_packet()
 {
 	int64_t v_first_pts=0, v_first_dts=0, a_first_pts=0, a_first_dts=0;
 
