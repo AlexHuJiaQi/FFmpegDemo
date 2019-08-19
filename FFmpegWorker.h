@@ -27,19 +27,20 @@ public:
 
 	void pause()
 	{
-		bStop = bStop ? false : true;
+		b_stop = b_stop ? false : true;
 	}
+
+	void trigger() { b_trigger = true; }
 
 	bool open_input();
 	bool open_output();
 
-	void write_packet();
-
 public slots:
 	void read_packet();
+	void write_packet();
 
 private:
-	bool bStop;
+	bool b_stop, b_trigger;
 	const char* i_filename;
 	const char* o_filename;
 

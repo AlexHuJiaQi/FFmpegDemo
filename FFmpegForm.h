@@ -18,13 +18,16 @@ public:
 private slots:
 	void on_start();
 	void on_stop();
+	void on_trigger();
 
 signals:
 	void start();
+	void stop();
 
 private:
 	QPushButton* pButton_stop;
 	QPushButton* pButton_start;
+	QPushButton* pButton_trig;
 
 	QThread* p_thread;
 	FFmpegWorker* p_worker;

@@ -2,7 +2,7 @@
 
 FFmpegWorker::FFmpegWorker( QObject* parent )
 	: QObject( parent )
-	, bStop( false )
+	, b_stop( false ), b_trigger( false )
 	, i_filename( "rtsp://admin:admin12345@192.168.11.2:554/h264/ch1/main/av_stream" )
 	, o_filename( "test.avi" )
 	, i_fmt_ctx( NULL )
@@ -55,10 +55,12 @@ bool FFmpegWorker::open_input()
 void FFmpegWorker::read_packet()
 {
 	AVPacket* p_packet = nullptr;
-	double time_first  = 0;
-	double time_last   = 0;
-	double time_diff   = 0;
-	while ( !bStop ) {
+	double time_first = 0;
+	double time_last  = 0;
+	double time_trig  = 0;
+	double time_diff  = 0;
+
+	while ( !b_stop ) {
 		p_packet = av_packet_alloc();
 
 		if ( av_read_frame( i_fmt_ctx, p_packet ) < 0 ) {
@@ -70,16 +72,31 @@ void FFmpegWorker::read_packet()
 		// 计算一桢在整个视频中的时间位置
 		// 根据 pts 来计算一桢在整个视频中的时间位置：
 		// timestamp (秒) = pts * av_q2d (st->time_base)
-		time_first = ( m_av_packet_list.first()->pts ) * ( av_q2d( i_fmt_ctx->streams[m_av_packet_list.first()->stream_index]->time_base ) );
-		time_last  = ( m_av_packet_list.last()->pts ) * ( av_q2d( i_fmt_ctx->streams[m_av_packet_list.last()->stream_index]->time_base ) );
-		time_diff  = time_last - time_first;
+		AVRational t_timebase = i_fmt_ctx->streams[p_packet->stream_index]->time_base;
+
+		if ( b_trigger == false ) {
+			time_first = ( m_av_packet_list.first()->pts ) * av_q2d( t_timebase );
+			time_last  = ( m_av_packet_list.last()->pts ) * av_q2d( t_timebase );
+			time_diff  = time_last - time_first;
+
+			if ( time_diff >= 10 ) {
+				av_packet_free( &m_av_packet_list.first() );
+				m_av_packet_list.removeFirst();
+			}
+		}
+		else {
+			if ( time_trig == 0 ) {
+				time_trig = p_packet->pts * av_q2d( t_timebase );
+			}
+			time_last  = ( m_av_packet_list.last()->pts ) * av_q2d( t_timebase );
+			time_diff  = time_last - time_trig;
+
+			if ( time_diff >= 5 ) {
+				break;
+			}
+		}
 
 		qDebug() << QThread::currentThreadId() << ", time interval: " << time_diff;
-
-		if ( time_diff >= 30 ) {
-			av_packet_free( &m_av_packet_list.first() );
-			m_av_packet_list.removeFirst();
-		}
 	}
 }
 
@@ -128,11 +145,14 @@ bool FFmpegWorker::open_output()
 
 void FFmpegWorker::write_packet()
 {
-	qDebug() << __FUNCTION__ << __LINE__ << QThread::currentThreadId();
-
-	int64_t v_first_pts=0, v_first_dts=0, a_first_pts=0, a_first_dts=0;
+	int64_t v_first_pts = 0;
+	int64_t v_first_dts = 0;
+	int64_t a_first_pts = 0;
+	int64_t a_first_dts = 0;
 
 	for ( AVPacket* p_packet : m_av_packet_list ) {
+		qDebug() << __FUNCTION__ << __LINE__ << QThread::currentThreadId();
+
 		AVStream* i_stream = i_fmt_ctx->streams[p_packet->stream_index];
 		AVStream* o_stream = o_fmt_ctx->streams[p_packet->stream_index];
 
