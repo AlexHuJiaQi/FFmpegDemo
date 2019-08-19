@@ -2,21 +2,23 @@
 
 FFmpegWorker::FFmpegWorker( QObject* parent )
 	: QObject( parent )
+	, bStop( false )
 	, i_filename( "rtsp://admin:admin12345@192.168.11.2:554/h264/ch1/main/av_stream" )
 	, o_filename( "test.avi" )
-	, bStop( false )
+	, i_fmt_ctx( NULL )
+	, o_fmt_ctx( NULL )
 {}
 
 FFmpegWorker::~FFmpegWorker()
 {}
 
-bool FFmpegWorker::init()
+bool FFmpegWorker::start()
 {
 	avformat_network_init();
 	return true;
 }
 
-bool FFmpegWorker::deinit()
+bool FFmpegWorker::stop()
 {
 	if ( i_fmt_ctx ) {
 		avformat_close_input( &i_fmt_ctx );
@@ -34,6 +36,8 @@ bool FFmpegWorker::deinit()
 
 bool FFmpegWorker::open_input()
 {
+	qDebug() << __FUNCTION__ << __LINE__ << QThread::currentThreadId();
+
 	if ( avformat_open_input( &i_fmt_ctx, i_filename, 0, 0 ) < 0 ) {
 		fprintf( stderr, "Could not open input file '%s'", i_filename );
 		return false;
@@ -50,8 +54,6 @@ bool FFmpegWorker::open_input()
 
 void FFmpegWorker::read_packet()
 {
-	qDebug() << __FUNCTION__ << __LINE__ << QThread::currentThreadId();
-
 	AVPacket* p_packet = nullptr;
 	double time_first  = 0;
 	double time_last   = 0;
@@ -72,7 +74,7 @@ void FFmpegWorker::read_packet()
 		time_last  = ( m_av_packet_list.last()->pts ) * ( av_q2d( i_fmt_ctx->streams[m_av_packet_list.last()->stream_index]->time_base ) );
 		time_diff  = time_last - time_first;
 
-		qDebug() << "time interval: " << time_diff;
+		qDebug() << QThread::currentThreadId() << ", time interval: " << time_diff;
 
 		if ( time_diff >= 30 ) {
 			av_packet_free( &m_av_packet_list.first() );
@@ -83,22 +85,24 @@ void FFmpegWorker::read_packet()
 
 bool FFmpegWorker::open_output()
 {
+	qDebug() << __FUNCTION__ << __LINE__ << QThread::currentThreadId();
+
 	avformat_alloc_output_context2( &o_fmt_ctx, NULL, NULL, o_filename );
 
 	if ( !o_fmt_ctx ) {
-		qDebug( "Could not create output context\n" );
+		qDebug( "Could not create output context" );
 		return false;
 	}
 
 	for ( auto i = 0; i < i_fmt_ctx->nb_streams; i++ ) {
 		AVStream* out_stream = avformat_new_stream( o_fmt_ctx, NULL );
 		if ( !out_stream ) {
-			qDebug( "Failed allocating output stream\n" );
+			qDebug( "Failed allocating output stream" );
 			return false;
 		}
 
 		if ( avcodec_parameters_copy( out_stream->codecpar, i_fmt_ctx->streams[i]->codecpar ) < 0 ) {
-			qDebug( "Failed to copy codec parameters\n" );
+			qDebug( "Failed to copy codec parameters" );
 			return false;
 		}
 
@@ -115,7 +119,7 @@ bool FFmpegWorker::open_output()
 	}
 
 	if ( avformat_write_header( o_fmt_ctx, NULL ) < 0 ) {
-		qDebug( "Error occurred when opening output file\n" );
+		qDebug( "Error occurred when opening output file" );
 		return false;
 	}
 
@@ -124,6 +128,8 @@ bool FFmpegWorker::open_output()
 
 void FFmpegWorker::write_packet()
 {
+	qDebug() << __FUNCTION__ << __LINE__ << QThread::currentThreadId();
+
 	int64_t v_first_pts=0, v_first_dts=0, a_first_pts=0, a_first_dts=0;
 
 	for ( AVPacket* p_packet : m_av_packet_list ) {
@@ -133,24 +139,24 @@ void FFmpegWorker::write_packet()
 		if ( i_stream->codecpar->codec_type == AVMEDIA_TYPE_VIDEO ) {
 			if ( v_first_pts == 0 || v_first_dts == 0 ) {
 				v_first_pts = av_rescale_q_rnd( p_packet->pts,
-												i_fmt_ctx->streams[p_packet->stream_index]->time_base,
-												o_fmt_ctx->streams[p_packet->stream_index]->time_base,
+												i_stream->time_base,
+												o_stream->time_base,
 												AVRounding( AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX ) );
 				v_first_dts = av_rescale_q_rnd( p_packet->dts,
-												i_fmt_ctx->streams[p_packet->stream_index]->time_base,
-												o_fmt_ctx->streams[p_packet->stream_index]->time_base,
+												i_stream->time_base,
+												o_stream->time_base,
 												AVRounding( AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX ) );
 			}
 		}
 		else if ( i_stream->codecpar->codec_type == AVMEDIA_TYPE_AUDIO ) {
 			if ( a_first_pts == 0 || a_first_dts == 0 ) {
 				a_first_pts = av_rescale_q_rnd( p_packet->pts,
-												i_fmt_ctx->streams[p_packet->stream_index]->time_base,
-												o_fmt_ctx->streams[p_packet->stream_index]->time_base,
+												i_stream->time_base,
+												o_stream->time_base,
 												AVRounding( AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX ) );
 				a_first_dts = av_rescale_q_rnd( p_packet->dts,
-												i_fmt_ctx->streams[p_packet->stream_index]->time_base,
-												o_fmt_ctx->streams[p_packet->stream_index]->time_base,
+												i_stream->time_base,
+												o_stream->time_base,
 												AVRounding( AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX ) );
 			}
 		}
@@ -177,7 +183,7 @@ void FFmpegWorker::write_packet()
 		}
 
 		if ( av_interleaved_write_frame( o_fmt_ctx, p_packet ) < 0 ) {
-			qDebug( "Error muxing packet\n" );
+			qDebug( "Error muxing packet" );
 			av_packet_free( &p_packet );
 			continue;
 		}

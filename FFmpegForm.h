@@ -16,15 +16,16 @@ public:
 	virtual ~FFmpegForm() {}
 
 private slots:
-	void onStart();
-	void onStop();
+	void on_start();
+	void on_stop();
 
 signals:
 	void start();
 
 private:
-	QThread* p_thread;
 	QPushButton* pButton_stop;
 	QPushButton* pButton_start;
+
+	QThread* p_thread;
 	FFmpegWorker* p_worker;
 };

@@ -22,21 +22,29 @@ public:
 	explicit FFmpegWorker( QObject* parent = nullptr );
 	virtual ~FFmpegWorker();
 
-	bool bStop;
+	bool start();
+	bool stop();
 
-	bool init();
-	bool deinit();
+	void pause()
+	{
+		bStop = bStop ? false : true;
+	}
+
 	bool open_input();
 	bool open_output();
+
 	void write_packet();
 
 public slots:
 	void read_packet();
 
 private:
-	QList<AVPacket*> m_av_packet_list;
-	AVFormatContext* i_fmt_ctx = NULL;
-	AVFormatContext* o_fmt_ctx = NULL;
+	bool bStop;
 	const char* i_filename;
 	const char* o_filename;
+
+	AVFormatContext* i_fmt_ctx;
+	AVFormatContext* o_fmt_ctx;
+
+	QList<AVPacket*> m_av_packet_list;
 };
