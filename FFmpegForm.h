@@ -28,7 +28,10 @@ private:
 	QPushButton* pButton_stop;
 	QPushButton* pButton_start;
 	QPushButton* pButton_trig;
-
-	QThread* p_thread;
+#if 0
+	QThread * p_thread;
 	FFmpegWorker* p_worker;
+#endif
+
+	FFmpegController* p_controller;
 };
