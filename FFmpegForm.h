@@ -5,7 +5,7 @@
 #include <QThread>
 #include <QPushButton>
 
-#include "FFmpegWorker.h"
+#include "FFmpegController.h"
 
 class FFmpegForm : public QMainWindow
 {
@@ -28,10 +28,6 @@ private:
 	QPushButton* pButton_stop;
 	QPushButton* pButton_start;
 	QPushButton* pButton_trig;
-#if 0
-	QThread * p_thread;
-	FFmpegWorker* p_worker;
-#endif
 
 	FFmpegController* p_controller;
 };

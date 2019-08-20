@@ -115,7 +115,9 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="FFmpegForm.cpp" />
-    <ClCompile Include="FFmpegWorker.cpp" />
+    <ClCompile Include="FFmpegReader.cpp" />
+    <ClCompile Include="FFmpegController.cpp" />
+    <ClCompile Include="FFmpegWriter.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -125,7 +127,11 @@
     <QtMoc Include="FFmpegForm.h" />
   </ItemGroup>
   <ItemGroup>
-    <QtMoc Include="FFmpegWorker.h" />
+    <QtMoc Include="FFmpegController.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <QtMoc Include="FFmpegReader.h" />
+    <QtMoc Include="FFmpegWriter.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Condition="Exists('$(QtMsBuild)\qt.targets')">

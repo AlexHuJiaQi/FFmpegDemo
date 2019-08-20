@@ -26,29 +26,12 @@ FFmpegForm::FFmpegForm( QWidget* parent )
 void FFmpegForm::on_start()
 {
 	qDebug() << __FUNCTION__ << __LINE__ << QThread::currentThreadId();
+
 	if ( p_controller == nullptr ) {
 		p_controller = new FFmpegController;
 	}
 
 	p_controller->start();
-#if 0
-	p_thread = new QThread;
-	p_worker = new FFmpegWorker;
-	connect( this, SIGNAL( start() ), p_worker, SLOT( read_packet() ), Qt::QueuedConnection );
-	connect( this, SIGNAL( stop() ), p_worker, SLOT( write_packet() ), Qt::QueuedConnection );
-	p_worker->moveToThread( p_thread );
-	p_thread->start();
-
-	if ( !p_worker->start() ) {
-		p_worker->stop();
-	}
-
-	if ( !p_worker->open_input() ) {
-		p_worker->stop();
-	}
-
-	emit start();
-#endif
 }
 
 void FFmpegForm::on_stop()
@@ -56,36 +39,11 @@ void FFmpegForm::on_stop()
 	qDebug() << __FUNCTION__ << __LINE__ << QThread::currentThreadId();
 
 	p_controller->stop();
-
-#if 0
-	p_worker->pause();
-	p_thread->quit();
-	p_thread->wait();
-
-	//
-	// if ( !p_worker->open_output() ) {
-	// 	p_worker->stop();
-	// }
-
-	// p_worker->write_packet();
-	// p_worker->stop();
-
-	p_worker->deleteLater();
-	p_thread->deleteLater();
-#endif
 }
 
 void FFmpegForm::on_trigger()
 {
 	qDebug() << __FUNCTION__ << __LINE__ << QThread::currentThreadId();
+
 	p_controller->trigger();
-#if 0
-	p_worker->trigger();
-
-	if ( !p_worker->open_output() ) {
-		p_worker->stop();
-	}
-
-	emit stop();
-#endif
 }
