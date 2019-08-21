@@ -1,30 +1,15 @@
-#include "FFmpegWriter.h"
+﻿#include "FFmpegWriter.h"
 
-FFmpegWriter::FFmpegWriter( QReadWriteLock* locker,
-							AVFormatContext* i_fmt_ctx_,
-							AVFormatContext* o_fmt_ctx_,
-							QList<AVPacket*>* av_packet_list,
-							QObject* parent )
+FFmpegWriter::FFmpegWriter( QObject* parent )
 	: QObject( parent )
-	, b_stop( false )
-	, b_trigger( false )
-	, mLocker( locker )
-	, i_fmt_ctx( i_fmt_ctx_ )
-	, o_fmt_ctx( o_fmt_ctx_ )
-	, m_av_packet_list( av_packet_list )
 {}
 
 FFmpegWriter::~FFmpegWriter()
 {}
 
-void FFmpegWriter::stop()
+void FFmpegWriter::setParameter( FFmpegParameter* para )
 {
-	b_stop = true;
-}
-
-void FFmpegWriter::trigger()
-{
-	b_trigger = true;
+	m_para = para;
 }
 
 void FFmpegWriter::doWork()
@@ -33,25 +18,23 @@ void FFmpegWriter::doWork()
 	int64_t v_first_dts = 0;
 	int64_t a_first_pts = 0;
 	int64_t a_first_dts = 0;
-
+	AVPacket* p_packet  = NULL;
 	while ( true ) {
 		qDebug() << __FUNCTION__ << __LINE__ << QThread::currentThreadId();
 
-		if ( b_stop && m_av_packet_list->isEmpty() ) {
+		m_para->mutex->lock();
+		if ( m_para->av_packet_list.isEmpty() ) {
+			m_para->bufferEmpty->wait( m_para->mutex );
+		}
+		p_packet = m_para->av_packet_list.takeFirst();
+		m_para->mutex->unlock();
+
+		if ( m_para->b_read_finish ) {
 			break;
 		}
 
-		if ( m_av_packet_list->isEmpty() ) {
-			QThread::usleep( 500 );
-			continue;
-		}
-
-		mLocker->lockForWrite();
-		AVPacket* p_packet = m_av_packet_list->takeFirst();
-		mLocker->unlock();
-
-		AVStream* i_stream = i_fmt_ctx->streams[p_packet->stream_index];
-		AVStream* o_stream = o_fmt_ctx->streams[p_packet->stream_index];
+		AVStream* i_stream = m_para->i_fmt_ctx->streams[p_packet->stream_index];
+		AVStream* o_stream = m_para->o_fmt_ctx->streams[p_packet->stream_index];
 
 		if ( i_stream->codecpar->codec_type == AVMEDIA_TYPE_VIDEO ) {
 			if ( v_first_pts == 0 || v_first_dts == 0 ) {
@@ -99,7 +82,7 @@ void FFmpegWriter::doWork()
 			p_packet->dts -= a_first_dts;
 		}
 
-		if ( av_interleaved_write_frame( o_fmt_ctx, p_packet ) < 0 ) {
+		if ( av_interleaved_write_frame( m_para->o_fmt_ctx, p_packet ) < 0 ) {
 			qDebug( "Error muxing packet" );
 			av_packet_free( &p_packet );
 			continue;
@@ -108,5 +91,11 @@ void FFmpegWriter::doWork()
 		av_packet_free( &p_packet );
 	}
 
-	av_write_trailer( o_fmt_ctx );
+	av_write_trailer( m_para->o_fmt_ctx );
+	avio_closep( &m_para->o_fmt_ctx->pb );
+	avformat_free_context( m_para->o_fmt_ctx );
+
+	m_para->mutex->lock();
+	m_para->m_write_finish->wakeAll();
+	m_para->mutex->unlock();
 }

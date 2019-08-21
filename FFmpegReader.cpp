@@ -1,81 +1,86 @@
-#include "FFmpegReader.h"
+ï»¿#include "FFmpegReader.h"
 
-FFmpegReader::FFmpegReader( QReadWriteLock* locker,
-							AVFormatContext* fmt_ctx,
-							QList<AVPacket*>* av_packet_list,
-							QObject* parent )
+FFmpegReader::FFmpegReader( QObject* parent )
 	: QObject( parent )
-	, b_stop( false )
-	, b_trigger( false )
-	, mLocker( locker )
-	, i_fmt_ctx( fmt_ctx )
-	, m_av_packet_list( av_packet_list )
 {}
 
 FFmpegReader::~FFmpegReader()
 {}
 
-void FFmpegReader::stop()
+void FFmpegReader::setParameter( FFmpegParameter* para )
 {
-	b_stop = true;
-}
-
-void FFmpegReader::trigger()
-{
-	b_trigger = true;
+	m_para = para;
 }
 
 void FFmpegReader::doWork()
 {
 	AVPacket* p_packet = nullptr;
-	double time_first = 0;
-	double time_last = 0;
-	double time_trig = 0;
-	double time_diff = 0;
+	double time_first  = 0;
+	double time_last   = 0;
+	double time_trig   = 0;
+	double time_diff   = 0;
 
 	while ( true ) {
-		if ( b_stop ) {
+		if ( m_para->b_stop ) {
 			break;
 		}
 
 		p_packet = av_packet_alloc();
 
-		if ( av_read_frame( i_fmt_ctx, p_packet ) < 0 ) {
+		if ( av_read_frame( m_para->i_fmt_ctx, p_packet ) < 0 ) {
 			continue;
 		}
 
-		mLocker->lockForWrite();
-		m_av_packet_list->append( p_packet );
-		AVPacket* t_first_packet = m_av_packet_list->first();
-		AVPacket* t_last__packet = m_av_packet_list->last();
-		mLocker->unlock();
+		// è®¡ç®—ä¸€æ¡¢åœ¨æ•´ä¸ªè§†é¢‘ä¸­çš„æ—¶é—´ä½ç½®;
+		// æ ¹æ® pts æ¥è®¡ç®—ä¸€æ¡¢åœ¨æ•´ä¸ªè§†é¢‘ä¸­çš„æ—¶é—´ä½ç½®ï¼š
+		// timestamp (ç§’) = pts * av_q2d (st->time_base)
+		const AVRational t_timebase = m_para->i_fmt_ctx->streams[p_packet->stream_index]->time_base;
 
-		// ¼ÆËãÒ»èåÔÚÕû¸öÊÓÆµÖÐµÄÊ±¼äÎ»ÖÃ;
-		// ¸ù¾Ý pts À´¼ÆËãÒ»èåÔÚÕû¸öÊÓÆµÖÐµÄÊ±¼äÎ»ÖÃ£º
-		// timestamp (Ãë) = pts * av_q2d (st->time_base)
-		AVRational t_timebase = i_fmt_ctx->streams[p_packet->stream_index]->time_base;
+		// æœªè§¦å‘è®°å½•ä¿¡å·çš„çŠ¶æ€
+		if ( !m_para->b_trigger ) {
+			m_para->av_packet_list.append( p_packet );
 
-		if ( !b_trigger ) {
+			AVPacket* t_first_packet = m_para->av_packet_list.first();
+
 			time_first = ( t_first_packet->pts ) * av_q2d( t_timebase );
-			time_last = ( t_last__packet->pts ) * av_q2d( t_timebase );
-			time_diff = time_last - time_first;
+			time_last  = ( p_packet->pts ) * av_q2d( t_timebase );
+			time_diff  = time_last - time_first;
 
-			if ( time_diff >= 10 ) {
+			if ( time_diff >= Cache_Interval_1 ) {
 				av_packet_free( &t_first_packet );
-				mLocker->lockForWrite();
-				m_av_packet_list->removeFirst();
-				mLocker->unlock();
+				m_para->av_packet_list.removeFirst();
 			}
 		}
-		else {
+		else { // è§¦å‘è®°å½•ä¿¡å·çš„çŠ¶æ€
+			m_para->mutex->lock();
+			m_para->av_packet_list.append( p_packet );
+			m_para->bufferEmpty->wakeAll();
+			m_para->mutex->unlock();
+
 			if ( time_trig == 0 ) {
 				time_trig = p_packet->pts * av_q2d( t_timebase );
 			}
-			time_last = ( t_last__packet->pts ) * av_q2d( t_timebase );
+
+			time_last = ( p_packet->pts ) * av_q2d( t_timebase );
 			time_diff = time_last - time_trig;
 
-			if ( time_diff >= 5 ) {
-				break;
+			if ( time_diff >= Cache_Interval_2 ) {
+				m_para->b_read_finish = true;
+
+				m_para->mutex->lock();
+				m_para->bufferEmpty->wakeAll();
+				m_para->mutex->unlock();
+
+				m_para->mutex->lock();
+				m_para->m_write_finish->wait( m_para->mutex );
+				m_para->mutex->unlock();
+
+				m_para->b_trigger  = false;
+				double time_first  = 0;
+				double time_last   = 0;
+				double time_trig   = 0;
+				double time_diff   = 0;
+				// break;
 			}
 		}
 

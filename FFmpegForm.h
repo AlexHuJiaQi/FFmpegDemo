@@ -25,9 +25,9 @@ signals:
 	void stop();
 
 private:
-	QPushButton* pButton_stop;
-	QPushButton* pButton_start;
-	QPushButton* pButton_trig;
+	QPushButton* p_Button_stop;
+	QPushButton* p_Button_start;
+	QPushButton* p_Button_trig;
 
 	FFmpegController* p_controller;
 };

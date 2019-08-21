@@ -133,6 +133,9 @@
     <QtMoc Include="FFmpegReader.h" />
     <QtMoc Include="FFmpegWriter.h" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="GlobleDefine.h" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Condition="Exists('$(QtMsBuild)\qt.targets')">
     <Import Project="$(QtMsBuild)\qt.targets" />

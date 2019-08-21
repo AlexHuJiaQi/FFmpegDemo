@@ -7,20 +7,20 @@ FFmpegForm::FFmpegForm( QWidget* parent )
 	setWindowTitle( "FFmpeg Demo" );
 	resize( 300, 300 );
 
-	pButton_start = new QPushButton( this );
-	pButton_start->setText( "Start" );
-	pButton_start->setGeometry( 10, 10, 100, 100 );
-	connect( pButton_start, SIGNAL( clicked() ), this, SLOT( on_start() ) );
+	p_Button_start = new QPushButton( this );
+	p_Button_start->setText( "Start" );
+	p_Button_start->setGeometry( 10, 10, 100, 100 );
+	connect( p_Button_start, SIGNAL( clicked() ), this, SLOT( on_start() ) );
 
-	pButton_stop = new QPushButton( this );
-	pButton_stop->setText( "Stop" );
-	pButton_stop->setGeometry( 120, 10, 100, 100 );
-	connect( pButton_stop, SIGNAL( clicked() ), this, SLOT( on_stop() ) );
+	p_Button_stop = new QPushButton( this );
+	p_Button_stop->setText( "Stop" );
+	p_Button_stop->setGeometry( 120, 10, 100, 100 );
+	connect( p_Button_stop, SIGNAL( clicked() ), this, SLOT( on_stop() ) );
 
-	pButton_trig = new QPushButton( this );
-	pButton_trig->setText( "Trigger" );
-	pButton_trig->setGeometry( 10, 130, 100, 100 );
-	connect( pButton_trig, SIGNAL( clicked() ), this, SLOT( on_trigger() ) );
+	p_Button_trig = new QPushButton( this );
+	p_Button_trig->setText( "Trigger" );
+	p_Button_trig->setGeometry( 10, 130, 100, 100 );
+	connect( p_Button_trig, SIGNAL( clicked() ), this, SLOT( on_trigger() ) );
 }
 
 void FFmpegForm::on_start()
@@ -32,6 +32,10 @@ void FFmpegForm::on_start()
 	}
 
 	p_controller->start();
+
+	//p_Button_start->setEnabled( false );
+	//p_Button_stop->setEnabled( true );
+	//p_Button_trig->setEnabled( true );
 }
 
 void FFmpegForm::on_stop()
@@ -39,6 +43,10 @@ void FFmpegForm::on_stop()
 	qDebug() << __FUNCTION__ << __LINE__ << QThread::currentThreadId();
 
 	p_controller->stop();
+
+	//p_Button_start->setEnabled( true );
+	//p_Button_stop->setEnabled( false );
+	//p_Button_trig->setEnabled( false );
 }
 
 void FFmpegForm::on_trigger()
@@ -46,4 +54,8 @@ void FFmpegForm::on_trigger()
 	qDebug() << __FUNCTION__ << __LINE__ << QThread::currentThreadId();
 
 	p_controller->trigger();
+
+	//p_Button_start->setEnabled( false );
+	//p_Button_stop->setEnabled( true );
+	//p_Button_trig->setEnabled( false );
 }
