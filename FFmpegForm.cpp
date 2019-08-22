@@ -25,8 +25,6 @@ FFmpegForm::FFmpegForm( QWidget* parent )
 
 void FFmpegForm::on_start()
 {
-	qDebug() << __FUNCTION__ << __LINE__ << QThread::currentThreadId();
-
 	if ( p_controller == nullptr ) {
 		p_controller = new FFmpegController;
 	}
@@ -40,8 +38,6 @@ void FFmpegForm::on_start()
 
 void FFmpegForm::on_stop()
 {
-	qDebug() << __FUNCTION__ << __LINE__ << QThread::currentThreadId();
-
 	p_controller->stop();
 
 	//p_Button_start->setEnabled( true );
@@ -51,8 +47,6 @@ void FFmpegForm::on_stop()
 
 void FFmpegForm::on_trigger()
 {
-	qDebug() << __FUNCTION__ << __LINE__ << QThread::currentThreadId();
-
 	p_controller->trigger();
 
 	//p_Button_start->setEnabled( false );

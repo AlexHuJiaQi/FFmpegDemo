@@ -22,9 +22,6 @@ signals:
 	void toDoWorker();
 
 private:
-	char* i_filename;
-	char* o_filename;
-
 	FFmpegReader* pReader;
 	FFmpegWriter* pWriter;
 

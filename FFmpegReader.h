@@ -2,18 +2,23 @@
 
 #include "GlobleDefine.h"
 
-class FFmpegReader : public QObject
+class FFmpegReader : public AbstractReadWriter
 {
 	Q_OBJECT
 public:
 	explicit FFmpegReader( QObject* parent = nullptr );
 	virtual ~FFmpegReader();
 
-	void setParameter( FFmpegParameter* para );
+	virtual void setParameter( FFmpegParameter* para )override;
+
+	virtual bool isTrigger()  final { return b_trigger; }
+	virtual void setTrigger() final { b_trigger = true; }
+	virtual void clrTrigger() final { b_trigger = false; }
 
 public slots:
-	void doWork();
+	virtual void doWork()override;
 
 private:
+	bool b_trigger;
 	FFmpegParameter* m_para;
 };

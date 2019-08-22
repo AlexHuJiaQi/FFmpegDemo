@@ -3,6 +3,7 @@
 #include <QDebug>
 #include <QThread>
 #include <QMutex>
+#include <QDateTime>
 #include <QWaitCondition>
 
 #pragma comment(lib, "avformat.lib")
@@ -19,10 +20,10 @@ extern "C" {
 
 struct FFmpegParameter
 {
-	bool b_start;
-	bool b_stop;
-	bool b_trigger;
 	bool b_read_finish;
+
+	QByteArray i_filename;
+	QByteArray o_filename;
 
 	// 线程控制
 	QMutex* mutex;
@@ -37,4 +38,33 @@ struct FFmpegParameter
 	AVFormatContext* o_fmt_ctx;
 
 	QList<AVPacket*> av_packet_list;
+};
+
+class AbstractReadWriter : public QObject
+{
+	Q_OBJECT
+public:
+	explicit AbstractReadWriter( QObject* parent = nullptr )
+		: QObject( parent )
+	{
+		connect( this, SIGNAL( execute() ), this, SLOT( doWork() ), Qt::QueuedConnection );
+	}
+	virtual ~AbstractReadWriter() {}
+
+	virtual void setParameter( FFmpegParameter* para )=0;
+
+	virtual void doRecord() final { emit execute(); }
+
+	virtual bool isStart()final { return b_start; }
+	virtual void start()  final { b_start = true; }
+	virtual void stop()   final { b_start = false; }
+
+signals:
+	void execute();
+
+public slots:
+	virtual void doWork()=0;
+
+private:
+	bool b_start;
 };

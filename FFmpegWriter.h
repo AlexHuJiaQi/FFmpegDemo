@@ -2,17 +2,17 @@
 
 #include "GlobleDefine.h"
 
-class FFmpegWriter : public QObject
+class FFmpegWriter : public AbstractReadWriter
 {
 	Q_OBJECT
 public:
 	explicit FFmpegWriter( QObject* parent = nullptr );
 	virtual ~FFmpegWriter();
 
-	void setParameter( FFmpegParameter* para );
+	virtual void setParameter( FFmpegParameter* para )override;
 
 public slots:
-	void doWork();
+	virtual void doWork()override;
 
 private:
 	FFmpegParameter* m_para;
