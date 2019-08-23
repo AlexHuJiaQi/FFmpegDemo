@@ -1,4 +1,5 @@
 ﻿#include "FFmpegReader.h"
+#include <math.h>
 
 FFmpegReader::FFmpegReader( QObject* parent )
 	: AbstractReadWriter( parent )
@@ -15,11 +16,11 @@ void FFmpegReader::setParameter( FFmpegParameter* para )
 
 void FFmpegReader::doWork()
 {
+	qDebug() << QString( "%1, %2, diff time:" ).arg( __FUNCTION__ ).arg( __LINE__, 3 ) << QThread::currentThread;
 	AVPacket* p_packet = nullptr;
-	double time_first  = 0;
-	double time_last   = 0;
-	double time_trig   = 0;
-	double time_diff   = 0;
+
+	double time_trig = 0;
+	double time_diff = 0;
 
 	/******************************************************************************************/
 	avformat_network_init();
@@ -54,33 +55,39 @@ void FFmpegReader::doWork()
 		// 根据 pts 来计算一桢在整个视频中的时间位置：
 		// timestamp (秒) = pts * av_q2d (st->time_base)
 		const AVRational t_timebase = m_para->i_fmt_ctx->streams[p_packet->stream_index]->time_base;
-
 		// 未触发记录信号的状态
 		if ( !isTrigger() ) {
 			m_para->av_packet_list.append( p_packet );
 
-			AVPacket* t_first_packet = m_para->av_packet_list.first();
-
-			time_first = ( t_first_packet->pts ) * av_q2d( t_timebase );
-			time_last  = ( p_packet->pts ) * av_q2d( t_timebase );
-			time_diff  = time_last - time_first;
-
+			time_diff = ( av_q2d( t_timebase ) * p_packet->pts ) - ( av_q2d( t_timebase ) * m_para->av_packet_list.first()->pts );
 			if ( time_diff >= Cache_Interval_1 ) {
-				av_packet_free( &t_first_packet );
+				av_packet_free( &m_para->av_packet_list.first() );
 				m_para->av_packet_list.removeFirst();
+			}
+
+			if ( time_diff < 0 ) {
+				qDebug() << QString( "%1, %2 - %3" )
+					.arg( time_diff, -15 )
+					.arg( ( m_para->i_fmt_ctx->streams[p_packet->stream_index]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO ? "Video" : "Audio" ) )
+					.arg( ( m_para->i_fmt_ctx->streams[m_para->av_packet_list.first()->stream_index]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO ? "Video" : "Audio" ) )
+					<< "########";
+			}
+			else {
+				qDebug() << QString( "%1, %2 - %3" )
+					.arg( time_diff, -15 )
+					.arg( ( m_para->i_fmt_ctx->streams[p_packet->stream_index]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO ? "Video" : "Audio" ) )
+					.arg( ( m_para->i_fmt_ctx->streams[m_para->av_packet_list.first()->stream_index]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO ? "Video" : "Audio" ) );
 			}
 		}
 		else { // 触发记录信号的状态
 			m_para->mutex->lock();
 			m_para->av_packet_list.append( p_packet );
-
 			m_para->bufferEmpty->wakeAll();
 			m_para->mutex->unlock();
 
 			if ( time_trig == 0 ) { time_trig = p_packet->pts * av_q2d( t_timebase ); }
 
-			time_last = ( p_packet->pts ) * av_q2d( t_timebase );
-			time_diff = time_last - time_trig;
+			time_diff = ( av_q2d( t_timebase ) * p_packet->pts ) - time_trig;
 
 			if ( time_diff >= Cache_Interval_2 ) {
 				qDebug() << "#############################################################" << "Cache 2 Finish";
@@ -96,20 +103,11 @@ void FFmpegReader::doWork()
 
 				clrTrigger();
 
-				time_first  = 0;
-				time_last   = 0;
 				time_trig   = 0;
 				time_diff   = 0;
 			}
 		}
-
-		if ( time_diff >= 0 ) {
-			qDebug() << QString( "%1, %2, %3, time:%4" )
-				.arg( __FUNCTION__ )
-				.arg( __LINE__, 3 )
-				.arg( (quint64 )QThread::currentThread() )
-				.arg( time_diff );
-		}
+		// qDebug() << QString( "%1, %2, time:%3" ).arg( __FUNCTION__ ).arg( __LINE__, 3 ).arg( time_diff, -12 ) << QThread::currentThread();
 #endif
 	}
 

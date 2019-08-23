@@ -14,6 +14,8 @@ void FFmpegWriter::setParameter( FFmpegParameter* para )
 
 void FFmpegWriter::doWork()
 {
+	qDebug() << QString( "%1, %2" ).arg( __FUNCTION__ ).arg( __LINE__, 3 ) << QThread::currentThread();
+
 	int64_t v_first_pts = 0;
 	int64_t v_first_dts = 0;
 	int64_t a_first_pts = 0;
@@ -61,13 +63,12 @@ void FFmpegWriter::doWork()
 	/******************************************************************************************/
 
 	while ( true ) {
+		qDebug() << QString( "%1, %2, size:%3" ).arg( __FUNCTION__ ).arg( __LINE__, 3 ).arg( m_para->av_packet_list.size(), -12 ) << QThread::currentThread();
 		if ( !isStart() ) {
 			if ( !m_para->av_packet_list.isEmpty() ) {
 				p_packet = m_para->av_packet_list.takeFirst();
 			}
-			else {
-				break;
-			}
+			else { break; }
 		}
 		else {
 			m_para->mutex->lock();
@@ -77,12 +78,11 @@ void FFmpegWriter::doWork()
 			p_packet = m_para->av_packet_list.takeFirst();
 			m_para->mutex->unlock();
 
-			if ( m_para->av_packet_list.isEmpty() ) {
-				break;
-			}
+			if ( m_para->av_packet_list.isEmpty() ) { break; }
 		}
 
 #if 1
+
 		AVStream * i_stream = m_para->i_fmt_ctx->streams[p_packet->stream_index];
 		AVStream* o_stream = m_para->o_fmt_ctx->streams[p_packet->stream_index];
 

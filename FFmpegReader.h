@@ -1,6 +1,6 @@
 #pragma once
 
-#include "GlobleDefine.h"
+#include "AbstractReadWriter.h"
 
 class FFmpegReader : public AbstractReadWriter
 {

@@ -15,8 +15,8 @@ extern "C" {
 #include <libavcodec/avcodec.h>
 }
 
-#define Cache_Interval_1 5
-#define Cache_Interval_2 5
+#define Cache_Interval_1 3
+#define Cache_Interval_2 3
 
 struct FFmpegParameter
 {
@@ -46,6 +46,7 @@ class AbstractReadWriter : public QObject
 public:
 	explicit AbstractReadWriter( QObject* parent = nullptr )
 		: QObject( parent )
+		, b_start( false )
 	{
 		connect( this, SIGNAL( execute() ), this, SLOT( doWork() ), Qt::QueuedConnection );
 	}

@@ -5,7 +5,7 @@
 
 #include "FFmpegReader.h"
 #include "FFmpegWriter.h"
-#include "GlobleDefine.h"
+#include "AbstractReadWriter.h"
 
 class FFmpegController : public QObject
 {
