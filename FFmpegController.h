@@ -15,7 +15,7 @@ public:
 	virtual ~FFmpegController();
 
 	bool start();
-	bool stop();
+	bool termination();
 	bool trigger();
 
 signals:

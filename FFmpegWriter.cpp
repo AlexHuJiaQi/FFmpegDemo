@@ -63,92 +63,107 @@ void FFmpegWriter::doWork()
 	/******************************************************************************************/
 
 	while ( true ) {
-		qDebug() << QString( "%1, %2, size:%3" ).arg( __FUNCTION__ ).arg( __LINE__, 3 ).arg( m_para->av_packet_list.size(), -12 ) << QThread::currentThread();
-		if ( !isStart() ) {
-			if ( !m_para->av_packet_list.isEmpty() ) {
-				p_packet = m_para->av_packet_list.takeFirst();
+		qDebug() << QString( "%1, %2, audio size:%3, video size:%4" )
+			.arg( __FUNCTION__ )
+			.arg( __LINE__, 3 )
+			.arg( m_para->a_packet_list.size(), -7 )
+			.arg( m_para->v_packet_list.size(), -7 )
+			<< QThread::currentThread();
+
+		/**********************************/
+		m_para->mutex->lock();
+
+		if ( !m_para->b_read_finish ) {
+			m_para->bufferEmpty->wait( m_para->mutex );
+		}
+
+		if ( m_para->a_packet_list.isEmpty() && m_para->v_packet_list.isEmpty() ) {
+			m_para->mutex->unlock();
+			break;
+		}
+
+		if ( !m_para->a_packet_list.isEmpty() && !m_para->v_packet_list.isEmpty() ) {
+			const auto ts = av_compare_ts( m_para->v_packet_list.first()->pts,
+										   m_para->i_fmt_ctx->streams[m_para->v_packet_list.first()->stream_index]->time_base,
+										   m_para->a_packet_list.first()->pts,
+										   m_para->i_fmt_ctx->streams[m_para->a_packet_list.first()->stream_index]->time_base );
+			if ( ts == -1 || ts == 0 ) {
+				p_packet = m_para->v_packet_list.takeFirst();
 			}
-			else { break; }
+			else {
+				p_packet = m_para->a_packet_list.takeFirst();
+			}
+		}
+		else if ( m_para->a_packet_list.isEmpty() ) {
+			p_packet = m_para->v_packet_list.takeFirst();
 		}
 		else {
-			m_para->mutex->lock();
-			if ( !m_para->b_read_finish ) {
-				m_para->bufferEmpty->wait( m_para->mutex );
-			}
-			p_packet = m_para->av_packet_list.takeFirst();
-			m_para->mutex->unlock();
-
-			if ( m_para->av_packet_list.isEmpty() ) { break; }
+			p_packet = m_para->a_packet_list.takeFirst();
 		}
 
-#if 1
+		m_para->mutex->unlock();
 
-		AVStream * i_stream = m_para->i_fmt_ctx->streams[p_packet->stream_index];
-		AVStream* o_stream = m_para->o_fmt_ctx->streams[p_packet->stream_index];
-
-		if ( i_stream->codecpar->codec_type == AVMEDIA_TYPE_VIDEO ) {
+		/**********************************/
+		const AVMediaType t_type =  m_para->i_fmt_ctx->streams[p_packet->stream_index]->codecpar->codec_type;
+		if ( t_type == AVMEDIA_TYPE_VIDEO ) {
 			if ( v_first_pts == 0 || v_first_dts == 0 ) {
 				v_first_pts = av_rescale_q_rnd( p_packet->pts,
-												i_stream->time_base,
-												o_stream->time_base,
+												m_para->i_fmt_ctx->streams[p_packet->stream_index]->time_base,
+												m_para->o_fmt_ctx->streams[p_packet->stream_index]->time_base,
 												AVRounding( AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX ) );
 				v_first_dts = av_rescale_q_rnd( p_packet->dts,
-												i_stream->time_base,
-												o_stream->time_base,
+												m_para->i_fmt_ctx->streams[p_packet->stream_index]->time_base,
+												m_para->o_fmt_ctx->streams[p_packet->stream_index]->time_base,
 												AVRounding( AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX ) );
 			}
+			writePacket( p_packet, v_first_pts, v_first_dts );
 		}
-		else if ( i_stream->codecpar->codec_type == AVMEDIA_TYPE_AUDIO ) {
+		else if ( t_type == AVMEDIA_TYPE_AUDIO ) {
 			if ( a_first_pts == 0 || a_first_dts == 0 ) {
 				a_first_pts = av_rescale_q_rnd( p_packet->pts,
-												i_stream->time_base,
-												o_stream->time_base,
+												m_para->i_fmt_ctx->streams[p_packet->stream_index]->time_base,
+												m_para->o_fmt_ctx->streams[p_packet->stream_index]->time_base,
 												AVRounding( AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX ) );
 				a_first_dts = av_rescale_q_rnd( p_packet->dts,
-												i_stream->time_base,
-												o_stream->time_base,
+												m_para->i_fmt_ctx->streams[p_packet->stream_index]->time_base,
+												m_para->o_fmt_ctx->streams[p_packet->stream_index]->time_base,
 												AVRounding( AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX ) );
 			}
+			writePacket( p_packet, a_first_pts, a_first_dts );
 		}
-
-		p_packet->pts = av_rescale_q_rnd( p_packet->pts,
-										  i_stream->time_base,
-										  o_stream->time_base,
-										  AVRounding( AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX ) );
-		p_packet->dts = av_rescale_q_rnd( p_packet->dts,
-										  i_stream->time_base,
-										  o_stream->time_base,
-										  AVRounding( AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX ) );
-		p_packet->duration = av_rescale_q( p_packet->duration,
-										   i_stream->time_base,
-										   o_stream->time_base );
-
-		if ( i_stream->codecpar->codec_type == AVMEDIA_TYPE_VIDEO ) {
-			p_packet->pts -= v_first_pts;
-			p_packet->dts -= v_first_dts;
-		}
-		else if ( i_stream->codecpar->codec_type == AVMEDIA_TYPE_AUDIO ) {
-			p_packet->pts -= a_first_pts;
-			p_packet->dts -= a_first_dts;
-		}
-
-		if ( av_interleaved_write_frame( m_para->o_fmt_ctx, p_packet ) < 0 ) {
-			qDebug( "Error muxing packet" );
-			av_packet_free( &p_packet );
-			continue;
-		}
-
-		av_packet_free( &p_packet );
-#endif
 	}
 
 	/******************************************************************************************/
 	av_write_trailer( m_para->o_fmt_ctx );
 	avio_closep( &m_para->o_fmt_ctx->pb );
 	avformat_free_context( m_para->o_fmt_ctx );
-
+	m_para->b_write_finish = true;
 	m_para->mutex->lock();
 	m_para->m_write_finish->wakeAll();
 	m_para->mutex->unlock();
 	qDebug() << "#############################################################" << "Write Finished";
+}
+
+void FFmpegWriter::writePacket( AVPacket* pkt, int64_t pts_dif, int64_t dts_dif )
+{
+	pkt->pts = av_rescale_q_rnd( pkt->pts,
+								 m_para->i_fmt_ctx->streams[pkt->stream_index]->time_base,
+								 m_para->o_fmt_ctx->streams[pkt->stream_index]->time_base,
+								 AVRounding( AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX ) );
+	pkt->dts = av_rescale_q_rnd( pkt->dts,
+								 m_para->i_fmt_ctx->streams[pkt->stream_index]->time_base,
+								 m_para->o_fmt_ctx->streams[pkt->stream_index]->time_base,
+								 AVRounding( AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX ) );
+	pkt->duration = av_rescale_q( pkt->duration,
+								  m_para->i_fmt_ctx->streams[pkt->stream_index]->time_base,
+								  m_para->o_fmt_ctx->streams[pkt->stream_index]->time_base );
+
+	pkt->pts -= pts_dif;
+	pkt->dts -= pts_dif;
+
+	if ( av_interleaved_write_frame( m_para->o_fmt_ctx, pkt ) < 0 ) {
+		qDebug( "Error muxing packet" );
+	}
+
+	av_packet_free( &pkt );
 }

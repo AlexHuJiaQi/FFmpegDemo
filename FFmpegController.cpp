@@ -36,8 +36,8 @@ FFmpegController::FFmpegController( QObject* parent )
 
 FFmpegController::~FFmpegController()
 {
-	pReader->stop();
-	pWriter->stop();
+	pReader->termination();
+	pWriter->termination();
 
 	m_para.i_fmt_ctx = NULL;
 	m_para.o_fmt_ctx = NULL;
@@ -52,17 +52,18 @@ FFmpegController::~FFmpegController()
 bool FFmpegController::start()
 {
 	qDebug() << QString( "%1, %2" ).arg( __FUNCTION__ ).arg( __LINE__, 3 ) << QThread::currentThread();
-	if ( pReader->isStart() ) {
+	if ( pReader->isRunning() ) {
 		qDebug() << "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@" << QString( "%1, %2" ).arg( __FUNCTION__ ).arg( __LINE__, 3 );
 		return false;
 	}
 
-	m_para.b_read_finish = false;
 	m_para.o_filename = QDateTime::currentDateTime().toString( "yyyy-MM-dd_hh_mm_ss" ).toLatin1().append( ".avi" );
 	qDebug() << "#############################################################" << m_para.o_filename;
 
-	pReader->start();
+	m_para.b_read_finish  = false;
+	m_para.b_write_finish = false;
 	pReader->clrTrigger();
+	pReader->start();
 	pReader->doRecord();
 
 	return true;
@@ -71,15 +72,17 @@ bool FFmpegController::start()
 bool FFmpegController::trigger()
 {
 	qDebug() << QString( "%1, %2" ).arg( __FUNCTION__ ).arg( __LINE__, 3 ) << QThread::currentThread();
-	if ( pReader->isTrigger() ) {
+
+	if ( !pReader->isRunning() || pReader->isTrigger() ) {
 		qDebug() << "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@" << QString( "%1, %2" ).arg( __FUNCTION__ ).arg( __LINE__, 3 );
 		return false;
 	}
 
-	m_para.b_read_finish = false;
 	m_para.o_filename = QDateTime::currentDateTime().toString( "yyyy-MM-dd_hh_mm_ss" ).toLatin1().append( ".avi" );
 	qDebug() << "#############################################################" << m_para.o_filename;
 
+	m_para.b_read_finish  = false;
+	m_para.b_write_finish = false;
 	pReader->setTrigger();
 	pWriter->start();
 	pWriter->doRecord();
@@ -87,19 +90,22 @@ bool FFmpegController::trigger()
 	return true;
 }
 
-bool FFmpegController::stop()
+bool FFmpegController::termination()
 {
 	qDebug() << QString( "%1, %2" ).arg( __FUNCTION__ ).arg( __LINE__, 3 ) << QThread::currentThread();
-	if ( !pReader->isStart() ) {
+
+	if ( !pReader->isRunning() ) {
 		qDebug() << "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@" << QString( "%1, %2" ).arg( __FUNCTION__ ).arg( __LINE__, 3 );
 		return false;
 	}
 
-	pReader->stop();
+	m_para.b_read_finish  = false;
+	m_para.b_write_finish = false;
+	pReader->termination();
 
 	m_para.o_filename = QDateTime::currentDateTime().toString( "yyyy-MM-dd_hh_mm_ss" ).toLatin1().append( ".avi" );
 	qDebug() << "#############################################################" << m_para.o_filename;
-	pWriter->stop();
+	pWriter->termination();
 	pWriter->doRecord();
 
 	return true;

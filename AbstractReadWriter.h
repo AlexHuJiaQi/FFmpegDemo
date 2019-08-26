@@ -15,12 +15,12 @@ extern "C" {
 #include <libavcodec/avcodec.h>
 }
 
-#define Cache_Interval_1 3
-#define Cache_Interval_2 3
+#define Cache_Interval_1 18
+#define Cache_Interval_2 42
 
 struct FFmpegParameter
 {
-	bool b_read_finish;
+	bool b_read_finish, b_write_finish;
 
 	QByteArray i_filename;
 	QByteArray o_filename;
@@ -37,7 +37,10 @@ struct FFmpegParameter
 	AVFormatContext* i_fmt_ctx;
 	AVFormatContext* o_fmt_ctx;
 
-	QList<AVPacket*> av_packet_list;
+	// QList<AVPacket*> av_packet_list;
+
+	QList<AVPacket*> a_packet_list;
+	QList<AVPacket*> v_packet_list;
 };
 
 class AbstractReadWriter : public QObject
@@ -56,9 +59,9 @@ public:
 
 	virtual void doRecord() final { emit execute(); }
 
-	virtual bool isStart()final { return b_start; }
-	virtual void start()  final { b_start = true; }
-	virtual void stop()   final { b_start = false; }
+	virtual bool isRunning()   final { return b_start; }
+	virtual void start()       final { b_start = true; }
+	virtual void termination() final { b_start = false; }
 
 signals:
 	void execute();

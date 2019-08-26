@@ -13,7 +13,7 @@ FFmpegForm::FFmpegForm( QWidget* parent )
 	connect( p_Button_start, SIGNAL( clicked() ), this, SLOT( on_start() ) );
 
 	p_Button_stop = new QPushButton( this );
-	p_Button_stop->setText( "Stop" );
+	p_Button_stop->setText( "Termination" );
 	p_Button_stop->setGeometry( 120, 10, 100, 100 );
 	connect( p_Button_stop, SIGNAL( clicked() ), this, SLOT( on_stop() ) );
 
@@ -38,7 +38,7 @@ void FFmpegForm::on_start()
 
 void FFmpegForm::on_stop()
 {
-	p_controller->stop();
+	p_controller->termination();
 
 	//p_Button_start->setEnabled( true );
 	//p_Button_stop->setEnabled( false );
