@@ -63,12 +63,12 @@ void FFmpegWriter::doWork()
 	/******************************************************************************************/
 
 	while ( true ) {
-		qDebug() << QString( "%1, %2, audio size:%3, video size:%4" )
-			.arg( __FUNCTION__ )
-			.arg( __LINE__, 3 )
-			.arg( m_para->a_packet_list.size(), -7 )
-			.arg( m_para->v_packet_list.size(), -7 )
-			<< QThread::currentThread();
+		// qDebug() << QString( "%1, %2, (audio, size:%3), (video, size:%4)" )
+		// 	.arg( __FUNCTION__, -30 )
+		// 	.arg( __LINE__, 3 )
+		// 	.arg( m_para->a_packet_list.size(), -7 )
+		// 	.arg( m_para->v_packet_list.size(), -7 )
+		// 	<< QThread::currentThread();
 
 		/**********************************/
 		m_para->mutex->lock();
