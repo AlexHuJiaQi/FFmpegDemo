@@ -25,13 +25,13 @@ FFmpegController::FFmpegController( QObject* parent )
 	pReader = new FFmpegReader();
 	pReader->setParameter( &m_para );
 	pReader->moveToThread( m_para.thread__read );
-	m_para.thread__read->start();
+	m_para.thread__read->start( QThread::HighPriority );
 
 	//////////////////////////////////////
 	pWriter = new FFmpegWriter();
 	pWriter->setParameter( &m_para );
 	pWriter->moveToThread( m_para.thread_write );
-	m_para.thread_write->start();
+	m_para.thread_write->start( QThread::HighestPriority );
 }
 
 FFmpegController::~FFmpegController()

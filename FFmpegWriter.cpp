@@ -63,23 +63,13 @@ void FFmpegWriter::doWork()
 	/******************************************************************************************/
 
 	while ( true ) {
-		// qDebug() << QString( "%1, %2, (audio, size:%3), (video, size:%4)" )
-		// 	.arg( __FUNCTION__, -30 )
-		// 	.arg( __LINE__, 3 )
-		// 	.arg( m_para->a_packet_list.size(), -7 )
-		// 	.arg( m_para->v_packet_list.size(), -7 )
-		// 	<< QThread::currentThread();
-
 		/**********************************/
 		m_para->mutex->lock();
 
-		if ( !m_para->b_read_finish ) {
+		if ( !m_para->b_read_finish
+			 && m_para->a_packet_list.isEmpty()
+			 && m_para->v_packet_list.isEmpty() ) {
 			m_para->bufferEmpty->wait( m_para->mutex );
-		}
-
-		if ( m_para->a_packet_list.isEmpty() && m_para->v_packet_list.isEmpty() ) {
-			m_para->mutex->unlock();
-			break;
 		}
 
 		if ( !m_para->a_packet_list.isEmpty() && !m_para->v_packet_list.isEmpty() ) {
@@ -94,12 +84,23 @@ void FFmpegWriter::doWork()
 				p_packet = m_para->a_packet_list.takeFirst();
 			}
 		}
-		else if ( m_para->a_packet_list.isEmpty() ) {
+		else if ( m_para->a_packet_list.isEmpty() && !m_para->v_packet_list.isEmpty() ) {
 			p_packet = m_para->v_packet_list.takeFirst();
 		}
-		else {
+		else if ( !m_para->a_packet_list.isEmpty() && m_para->v_packet_list.isEmpty() ) {
 			p_packet = m_para->a_packet_list.takeFirst();
 		}
+		else {
+			m_para->mutex->unlock();
+			break;
+		}
+
+		qDebug() << QString( "%1, %2, (video, size:%3), (audio, size:%4)" )
+			.arg( __FUNCTION__, -30 )
+			.arg( __LINE__, 3 )
+			.arg( m_para->v_packet_list.size(), -21 )
+			.arg( m_para->a_packet_list.size(), -21 )
+			<< QThread::currentThread();
 
 		m_para->mutex->unlock();
 
