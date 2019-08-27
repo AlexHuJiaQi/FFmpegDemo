@@ -77,16 +77,16 @@ void FFmpegReader::parse_packet( AVPacket* p_packet )
 	if ( !isTrigger() ) { // 未收到记录触发信号
 		if ( t_type == AVMEDIA_TYPE_VIDEO ) {
 			m_para->v_packet_list.append( p_packet );
-			time_diff_a = ( av_q2d( t_timebase ) * p_packet->pts ) - ( av_q2d( t_timebase ) * m_para->v_packet_list.first()->pts );
-			if ( time_diff_a >= Cache_Interval_1 ) {
+			time_diff_v = ( av_q2d( t_timebase ) * p_packet->pts ) - ( av_q2d( t_timebase ) * m_para->v_packet_list.first()->pts );
+			if ( time_diff_v >= Cache_Interval_1 ) {
 				av_packet_free( &m_para->v_packet_list.first() );
 				m_para->v_packet_list.removeFirst();
 			}
 		}
 		else if ( t_type == AVMEDIA_TYPE_AUDIO ) {
 			m_para->a_packet_list.append( p_packet );
-			time_diff_v = ( av_q2d( t_timebase ) * p_packet->pts ) - ( av_q2d( t_timebase ) * m_para->a_packet_list.first()->pts );
-			if ( time_diff_v >= Cache_Interval_1 ) {
+			time_diff_a = ( av_q2d( t_timebase ) * p_packet->pts ) - ( av_q2d( t_timebase ) * m_para->a_packet_list.first()->pts );
+			if ( time_diff_a >= Cache_Interval_1 ) {
 				av_packet_free( &m_para->a_packet_list.first() );
 				m_para->a_packet_list.removeFirst();
 			}

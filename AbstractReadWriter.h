@@ -15,8 +15,8 @@ extern "C" {
 #include <libavcodec/avcodec.h>
 }
 
-#define Cache_Interval_1 18
-#define Cache_Interval_2 42
+#define Cache_Interval_1 180
+#define Cache_Interval_2 420
 
 struct FFmpegParameter
 {
