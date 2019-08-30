@@ -15,6 +15,9 @@ public:
 	virtual void setTrigger() final { b_trigger = true; }
 	virtual void clrTrigger() final { b_trigger = false; }
 
+signals:
+	void sig_read( QString );
+
 public slots:
 	virtual void doWork()override;
 

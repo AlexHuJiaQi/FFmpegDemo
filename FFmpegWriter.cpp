@@ -24,7 +24,7 @@ void FFmpegWriter::doWork()
 
 	/******************************************************************************************/
 
-	avformat_alloc_output_context2( &m_para->o_fmt_ctx, NULL, NULL, m_para->o_filename );
+	avformat_alloc_output_context2( &m_para->o_fmt_ctx, NULL, "avi", m_para->o_filename );
 
 	if ( !m_para->o_fmt_ctx ) {
 		qDebug( "Could not create output context" );
@@ -147,6 +147,7 @@ void FFmpegWriter::doWork()
 
 void FFmpegWriter::writePacket( AVPacket* pkt, int64_t pts_dif, int64_t dts_dif )
 {
+	pkt->pos = -1;
 	pkt->pts = av_rescale_q_rnd( pkt->pts,
 								 m_para->i_fmt_ctx->streams[pkt->stream_index]->time_base,
 								 m_para->o_fmt_ctx->streams[pkt->stream_index]->time_base,
@@ -158,12 +159,11 @@ void FFmpegWriter::writePacket( AVPacket* pkt, int64_t pts_dif, int64_t dts_dif 
 	pkt->duration = av_rescale_q( pkt->duration,
 								  m_para->i_fmt_ctx->streams[pkt->stream_index]->time_base,
 								  m_para->o_fmt_ctx->streams[pkt->stream_index]->time_base );
-
 	pkt->pts -= pts_dif;
 	pkt->dts -= pts_dif;
 
 	if ( av_interleaved_write_frame( m_para->o_fmt_ctx, pkt ) < 0 ) {
-		qDebug( "Error muxing packet" );
+		qDebug( "error mux packet" );
 	}
 
 	av_packet_free( &pkt );

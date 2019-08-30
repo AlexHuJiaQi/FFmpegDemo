@@ -11,7 +11,7 @@ class FFmpegController : public QObject
 {
 	Q_OBJECT
 public:
-	explicit FFmpegController( QObject* parent = nullptr );
+	explicit FFmpegController( QByteArray url, QObject* parent = nullptr );
 	virtual ~FFmpegController();
 
 	bool start();
@@ -21,9 +21,8 @@ public:
 signals:
 	void toDoWorker();
 
-private:
+public:
 	FFmpegReader* pReader;
 	FFmpegWriter* pWriter;
-
 	FFmpegParameter m_para;
 };

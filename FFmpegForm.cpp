@@ -5,6 +5,7 @@ FFmpegForm::FFmpegForm( QWidget* parent )
 	, p_controller( nullptr )
 {
 	setWindowTitle( "FFmpeg Demo" );
+	statusBar()->showMessage( "Daoreach" );
 	resize( 300, 300 );
 
 	p_Button_start = new QPushButton( this );
@@ -26,30 +27,24 @@ FFmpegForm::FFmpegForm( QWidget* parent )
 void FFmpegForm::on_start()
 {
 	if ( p_controller == nullptr ) {
-		p_controller = new FFmpegController;
+		p_controller = new FFmpegController( "rtsp://admin:admin12345@192.168.11.2:554/h264/ch1/main/av_stream" );
+		connect( p_controller->pReader, SIGNAL( sig_read( QString ) ), this, SLOT( on_sig_value( QString ) ), Qt::QueuedConnection );
 	}
 
 	p_controller->start();
-
-	//p_Button_start->setEnabled( false );
-	//p_Button_stop->setEnabled( true );
-	//p_Button_trig->setEnabled( true );
 }
 
 void FFmpegForm::on_stop()
 {
 	p_controller->termination();
-
-	//p_Button_start->setEnabled( true );
-	//p_Button_stop->setEnabled( false );
-	//p_Button_trig->setEnabled( false );
 }
 
 void FFmpegForm::on_trigger()
 {
 	p_controller->trigger();
+}
 
-	//p_Button_start->setEnabled( false );
-	//p_Button_stop->setEnabled( true );
-	//p_Button_trig->setEnabled( false );
+void FFmpegForm::on_sig_value( QString string )
+{
+	statusBar()->showMessage( string );
 }

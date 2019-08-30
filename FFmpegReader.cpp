@@ -37,8 +37,20 @@ void FFmpegReader::doWork()
 	while ( true ) {
 		if ( isRunning() ) {
 			p_packet = av_packet_alloc();
+			if ( p_packet == NULL ) {
+				continue;
+			}
 
-			if ( av_read_frame( m_para->i_fmt_ctx, p_packet ) < 0 ) { continue; }
+			if ( av_read_frame( m_para->i_fmt_ctx, p_packet ) < 0 ) {
+				continue;
+			}
+
+			if ( p_packet->pts == AV_NOPTS_VALUE ) {
+				qDebug() << "################################### AV_NOPTS_VALUE";
+				av_packet_free( &p_packet );
+				continue;
+			}
+
 			parse_packet( p_packet );
 		}
 		else {
@@ -79,16 +91,16 @@ void FFmpegReader::parse_packet( AVPacket* p_packet )
 			m_para->v_packet_list.append( p_packet );
 			time_diff_v = ( av_q2d( t_timebase ) * p_packet->pts ) - ( av_q2d( t_timebase ) * m_para->v_packet_list.first()->pts );
 			if ( time_diff_v >= Cache_Interval_1 ) {
-				av_packet_free( &m_para->v_packet_list.first() );
-				m_para->v_packet_list.removeFirst();
+				AVPacket* pkt = m_para->v_packet_list.takeFirst();
+				av_packet_free( &pkt );
 			}
 		}
 		else if ( t_type == AVMEDIA_TYPE_AUDIO ) {
 			m_para->a_packet_list.append( p_packet );
 			time_diff_a = ( av_q2d( t_timebase ) * p_packet->pts ) - ( av_q2d( t_timebase ) * m_para->a_packet_list.first()->pts );
 			if ( time_diff_a >= Cache_Interval_1 ) {
-				av_packet_free( &m_para->a_packet_list.first() );
-				m_para->a_packet_list.removeFirst();
+				AVPacket* pkt = m_para->a_packet_list.takeFirst();
+				av_packet_free( &pkt );
 			}
 		}
 	}
@@ -137,4 +149,6 @@ void FFmpegReader::parse_packet( AVPacket* p_packet )
 		.arg( m_para->a_packet_list.size(), -7 )
 		.arg( time_diff_a, -7 )
 		<< QThread::currentThread();
+
+	emit sig_read( QString( "v:%1, a:%2" ).arg( time_diff_v ).arg( time_diff_a ) );
 }

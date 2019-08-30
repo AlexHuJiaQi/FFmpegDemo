@@ -1,14 +1,14 @@
 ﻿#include "FFmpegController.h"
 
 /////////////////////////////////////////////////////////////
-FFmpegController::FFmpegController( QObject* parent )
+FFmpegController::FFmpegController( QByteArray url, QObject* parent )
 	: QObject( parent )
 	, pReader( NULL )
 	, pWriter( NULL )
 {
 	m_para.b_read_finish = false;
 
-	m_para.i_filename = "rtsp://admin:admin12345@192.168.11.2:554/h264/ch1/main/av_stream";
+	m_para.i_filename = url; // "rtsp://admin:admin12345@192.168.11.2:554/h264/ch1";
 
 	m_para.i_fmt_ctx = NULL;
 	m_para.o_fmt_ctx = NULL;

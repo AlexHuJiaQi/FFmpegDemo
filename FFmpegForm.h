@@ -19,6 +19,7 @@ private slots:
 	void on_start();
 	void on_stop();
 	void on_trigger();
+	void on_sig_value( QString );
 
 signals:
 	void start();
