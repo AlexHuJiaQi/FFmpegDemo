@@ -1,4 +1,5 @@
-﻿#pragma once
+﻿#ifndef FFMPEGWRITER_H
+#define FFMPEGWRITER_H
 
 #include "AbstractReadWriter.h"
 
@@ -9,14 +10,11 @@ public:
 	explicit FFmpegWriter( QObject* parent = nullptr );
 	virtual ~FFmpegWriter();
 
-	virtual void setParameter( FFmpegParameter* para )override;
-
 public slots:
 	virtual void doWork()override;
 
 private:
 	void writePacket( AVPacket* pkt, int64_t pts_dif, int64_t dts_dif );
-
-private:
-	FFmpegParameter* m_para;
 };
+
+#endif FFMPEGWRITER_H

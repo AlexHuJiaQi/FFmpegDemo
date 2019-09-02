@@ -1,37 +1,40 @@
 ﻿#include "FFmpegController.h"
 
 /////////////////////////////////////////////////////////////
-FFmpegController::FFmpegController( QByteArray url, QObject* parent )
+FFmpegController::FFmpegController( uint32_t interval_1,
+									uint32_t interval_2,
+									QByteArray url,
+									QObject* parent )
 	: QObject( parent )
 	, pReader( NULL )
 	, pWriter( NULL )
 {
-	m_para.b_read_finish = false;
+	mPara.i_filename       = url;
+	mPara.Cache_Interval_1 = interval_1;
+	mPara.Cache_Interval_2 = interval_2;
 
-	m_para.i_filename = url; // "rtsp://admin:admin12345@192.168.11.2:554/h264/ch1";
-
-	m_para.i_fmt_ctx = NULL;
-	m_para.o_fmt_ctx = NULL;
-
-	m_para.mutex          = new QMutex;
-
-	m_para.bufferEmpty    = new QWaitCondition;
-	m_para.m_write_finish = new QWaitCondition;
-
-	m_para.thread__read = new QThread;
-	m_para.thread_write = new QThread;
+	mPara.i_fmt_ctx      = NULL;
+	mPara.o_fmt_ctx      = NULL;
+	mPara.b_start        = false;
+	mPara.b_read_finish  = false;
+	mPara.b_write_finish = false;
+	mPara.mutex          = new QMutex;
+	mPara.bufferEmpty    = new QWaitCondition;
+	mPara.m_write_finish = new QWaitCondition;
+	mPara.thread__read   = new QThread;
+	mPara.thread_write   = new QThread;
 
 	//////////////////////////////////////
 	pReader = new FFmpegReader();
-	pReader->setParameter( &m_para );
-	pReader->moveToThread( m_para.thread__read );
-	m_para.thread__read->start( QThread::HighPriority );
+	pReader->setParameter( &mPara );
+	pReader->moveToThread( mPara.thread__read );
+	mPara.thread__read->start( QThread::HighPriority );
 
 	//////////////////////////////////////
 	pWriter = new FFmpegWriter();
-	pWriter->setParameter( &m_para );
-	pWriter->moveToThread( m_para.thread_write );
-	m_para.thread_write->start( QThread::HighestPriority );
+	pWriter->setParameter( &mPara );
+	pWriter->moveToThread( mPara.thread_write );
+	mPara.thread_write->start( QThread::HighestPriority );
 }
 
 FFmpegController::~FFmpegController()
@@ -39,14 +42,14 @@ FFmpegController::~FFmpegController()
 	pReader->termination();
 	pWriter->termination();
 
-	m_para.i_fmt_ctx = NULL;
-	m_para.o_fmt_ctx = NULL;
+	mPara.i_fmt_ctx = NULL;
+	mPara.o_fmt_ctx = NULL;
 
-	delete m_para.mutex;
-	delete m_para.m_write_finish;
+	delete mPara.mutex;
+	delete mPara.m_write_finish;
 
-	m_para.thread__read->deleteLater();
-	m_para.thread_write->deleteLater();
+	mPara.thread__read->deleteLater();
+	mPara.thread_write->deleteLater();
 }
 
 bool FFmpegController::start()
@@ -57,11 +60,11 @@ bool FFmpegController::start()
 		return false;
 	}
 
-	m_para.o_filename = QDateTime::currentDateTime().toString( "yyyy-MM-dd_hh_mm_ss" ).toLatin1().append( ".avi" );
-	qDebug() << "#############################################################" << m_para.o_filename;
+	mPara.o_filename = QDateTime::currentDateTime().toString( "yyyy-MM-dd_hh_mm_ss" ).toLatin1().append( ".avi" );
+	qDebug() << "#############################################################" << mPara.o_filename;
 
-	m_para.b_read_finish  = false;
-	m_para.b_write_finish = false;
+	mPara.b_read_finish  = false;
+	mPara.b_write_finish = false;
 	pReader->clrTrigger();
 	pReader->start();
 	pReader->doRecord();
@@ -78,11 +81,11 @@ bool FFmpegController::trigger()
 		return false;
 	}
 
-	m_para.o_filename = QDateTime::currentDateTime().toString( "yyyy-MM-dd_hh_mm_ss" ).toLatin1().append( ".avi" );
-	qDebug() << "#############################################################" << m_para.o_filename;
+	mPara.o_filename = QDateTime::currentDateTime().toString( "yyyy-MM-dd_hh_mm_ss" ).toLatin1().append( ".avi" );
+	qDebug() << "#############################################################" << mPara.o_filename;
 
-	m_para.b_read_finish  = false;
-	m_para.b_write_finish = false;
+	mPara.b_read_finish  = false;
+	mPara.b_write_finish = false;
 	pReader->setTrigger();
 	pWriter->start();
 	pWriter->doRecord();
@@ -99,12 +102,12 @@ bool FFmpegController::termination()
 		return false;
 	}
 
-	m_para.b_read_finish  = false;
-	m_para.b_write_finish = false;
+	mPara.b_read_finish  = false;
+	mPara.b_write_finish = false;
 	pReader->termination();
 
-	m_para.o_filename = QDateTime::currentDateTime().toString( "yyyy-MM-dd_hh_mm_ss" ).toLatin1().append( ".avi" );
-	qDebug() << "#############################################################" << m_para.o_filename;
+	mPara.o_filename = QDateTime::currentDateTime().toString( "yyyy-MM-dd_hh_mm_ss" ).toLatin1().append( ".avi" );
+	qDebug() << "#############################################################" << mPara.o_filename;
 	pWriter->termination();
 	pWriter->doRecord();
 

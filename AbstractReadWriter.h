@@ -1,4 +1,5 @@
-﻿#pragma once
+﻿#ifndef FFMPEGPARAMETER_H
+#define FFMPEGPARAMETER_H
 
 #include <QDebug>
 #include <QThread>
@@ -15,15 +16,18 @@ extern "C" {
 #include <libavcodec/avcodec.h>
 }
 
-#define Cache_Interval_1 180
-#define Cache_Interval_2 420
-
 struct FFmpegParameter
 {
-	bool b_read_finish, b_write_finish;
+	bool b_start;
+	bool b_read_finish;
+	bool b_write_finish;
 
 	QByteArray i_filename;
 	QByteArray o_filename;
+
+	// 缓存间隔
+	uint32_t Cache_Interval_1;
+	uint32_t Cache_Interval_2;
 
 	// 线程控制
 	QMutex* mutex;
@@ -49,19 +53,19 @@ class AbstractReadWriter : public QObject
 public:
 	explicit AbstractReadWriter( QObject* parent = nullptr )
 		: QObject( parent )
-		, b_start( false )
 	{
 		connect( this, SIGNAL( execute() ), this, SLOT( doWork() ), Qt::QueuedConnection );
 	}
 	virtual ~AbstractReadWriter() {}
 
-	virtual void setParameter( FFmpegParameter* para )=0;
+	virtual void setParameter( FFmpegParameter* para )final { m_para = para; }
+	virtual FFmpegParameter* getParameter()final { return m_para; }
 
 	virtual void doRecord() final { emit execute(); }
 
-	virtual bool isRunning()   final { return b_start; }
-	virtual void start()       final { b_start = true; }
-	virtual void termination() final { b_start = false; }
+	virtual bool isRunning()   final { return m_para->b_start; }
+	virtual void start()       final { m_para->b_start = true; }
+	virtual void termination() final { m_para->b_start = false; }
 
 signals:
 	void execute();
@@ -70,5 +74,7 @@ public slots:
 	virtual void doWork()=0;
 
 private:
-	bool b_start;
+	FFmpegParameter* m_para;
 };
+
+#endif

@@ -1,4 +1,5 @@
-﻿#pragma once
+﻿#ifndef FFMPEGCONTROLLER_H
+#define FFMPEGCONTROLLER_H
 
 #include <QObject>
 #include <QWaitCondition>
@@ -11,7 +12,10 @@ class FFmpegController : public QObject
 {
 	Q_OBJECT
 public:
-	explicit FFmpegController( QByteArray url, QObject* parent = nullptr );
+	explicit FFmpegController( uint32_t interval_1,
+							   uint32_t interval_2,
+							   QByteArray url,
+							   QObject* parent = nullptr );
 	virtual ~FFmpegController();
 
 	bool start();
@@ -24,5 +28,7 @@ signals:
 public:
 	FFmpegReader* pReader;
 	FFmpegWriter* pWriter;
-	FFmpegParameter m_para;
+	FFmpegParameter mPara;
 };
+
+#endif

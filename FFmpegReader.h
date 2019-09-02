@@ -1,4 +1,5 @@
-#pragma once
+#ifndef FFMPEGREADER_H
+#define FFMPEGREADER_H
 
 #include "AbstractReadWriter.h"
 
@@ -8,8 +9,6 @@ class FFmpegReader : public AbstractReadWriter
 public:
 	explicit FFmpegReader( QObject* parent = nullptr );
 	virtual ~FFmpegReader();
-
-	virtual void setParameter( FFmpegParameter* para )override;
 
 	virtual bool isTrigger()  final { return b_trigger; }
 	virtual void setTrigger() final { b_trigger = true; }
@@ -32,5 +31,6 @@ private:
 
 private:
 	bool b_trigger;
-	FFmpegParameter* m_para;
 };
+
+#endif
