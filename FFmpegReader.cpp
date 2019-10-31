@@ -15,7 +15,6 @@ void FFmpegReader::doWork()
 
 	/******************************************************************************************/
 	avformat_network_init();
-
 	if ( avformat_open_input( &getParameter()->i_fmt_ctx, getParameter()->i_filename, 0, 0 ) < 0 ) {
 		qDebug() << QString( "Could not open input file: %1" ).arg( getParameter()->i_filename.data() );
 		return;

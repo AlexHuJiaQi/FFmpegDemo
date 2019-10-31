@@ -60,11 +60,9 @@ bool FFmpegController::start()
 		return false;
 	}
 
-	mPara.o_filename = QDateTime::currentDateTime().toString( "yyyy-MM-dd_hh_mm_ss" ).toLatin1().append( ".avi" );
-	qDebug() << "#############################################################" << mPara.o_filename;
-
 	mPara.b_read_finish  = false;
 	mPara.b_write_finish = false;
+
 	pReader->clrTrigger();
 	pReader->start();
 	pReader->doRecord();
@@ -86,6 +84,7 @@ bool FFmpegController::trigger()
 
 	mPara.b_read_finish  = false;
 	mPara.b_write_finish = false;
+
 	pReader->setTrigger();
 	pWriter->start();
 	pWriter->doRecord();

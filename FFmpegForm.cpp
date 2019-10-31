@@ -27,7 +27,7 @@ FFmpegForm::FFmpegForm( QWidget* parent )
 void FFmpegForm::on_start()
 {
 	if ( p_controller == nullptr ) {
-		p_controller = new FFmpegController( 5, 5, "rtsp://admin:admin12345@192.168.11.2:554/h264/ch1/main/av_stream" );
+		p_controller = new FFmpegController( 5, 5, "rtsp://admin:Mission317!@192.168.11.4:554/h264/ch1/main" );
 		connect( p_controller->pReader, SIGNAL( sig_read( QString ) ), this, SLOT( on_sig_value( QString ) ), Qt::QueuedConnection );
 	}
 
