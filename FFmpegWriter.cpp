@@ -61,10 +61,10 @@ void FFmpegWriter::doWork()
 		/**********************************/
 		getParameter()->mutex->lock();
 
-		if ( !getParameter()->b_read_finish
+		if ( !getParameter()->b_r_finish
 			 && getParameter()->a_packet_list.isEmpty()
 			 && getParameter()->v_packet_list.isEmpty() ) {
-			getParameter()->bufferEmpty->wait( getParameter()->mutex );
+			getParameter()->_buffer_empty->wait( getParameter()->mutex );
 		}
 
 		if ( !getParameter()->a_packet_list.isEmpty() && !getParameter()->v_packet_list.isEmpty() ) {
@@ -100,7 +100,7 @@ void FFmpegWriter::doWork()
 		getParameter()->mutex->unlock();
 
 		/**********************************/
-		const AVMediaType t_type =  getParameter()->i_fmt_ctx->streams[p_packet->stream_index]->codecpar->codec_type;
+		const AVMediaType t_type = getParameter()->i_fmt_ctx->streams[p_packet->stream_index]->codecpar->codec_type;
 		if ( t_type == AVMEDIA_TYPE_VIDEO ) {
 			if ( v_first_pts == 0 || v_first_dts == 0 ) {
 				v_first_pts = av_rescale_q_rnd( p_packet->pts,
@@ -133,9 +133,9 @@ void FFmpegWriter::doWork()
 	av_write_trailer( getParameter()->o_fmt_ctx );
 	avio_closep( &getParameter()->o_fmt_ctx->pb );
 	avformat_free_context( getParameter()->o_fmt_ctx );
-	getParameter()->b_write_finish = true;
+	getParameter()->b_w_finish = true;
 	getParameter()->mutex->lock();
-	getParameter()->m_write_finish->wakeAll();
+	getParameter()->_write_finish->wakeAll();
 	getParameter()->mutex->unlock();
 	qDebug() << "#############################################################" << "Write Finished";
 }

@@ -22,12 +22,20 @@ FFmpegForm::FFmpegForm( QWidget* parent )
 	p_Button_trig->setText( "Trigger" );
 	p_Button_trig->setGeometry( 10, 130, 100, 100 );
 	connect( p_Button_trig, SIGNAL( clicked() ), this, SLOT( on_trigger() ) );
+
+	p_Button_direct = new QPushButton( this );
+	p_Button_direct->setText( "Direct" );
+	p_Button_direct->setGeometry( 120, 130, 100, 100 );
+	connect( p_Button_direct, SIGNAL( clicked() ), this, SLOT( on_direct() ) );
 }
 
 void FFmpegForm::on_start()
 {
 	if ( p_controller == nullptr ) {
-		p_controller = new FFmpegController( 5, 5, "rtsp://admin:Mission317!@192.168.11.4:554/h264/ch1/main" );
+		p_controller = new FFmpegController();
+		p_controller->setCacheInterval( 5 );
+		p_controller->setStoreInterval( 5 );
+		p_controller->setURL( QString( "rtsp://admin:Mission317!@192.168.11.4:554/h264/ch1/main" ) );
 		connect( p_controller->pReader, SIGNAL( sig_read( QString ) ), this, SLOT( on_sig_value( QString ) ), Qt::QueuedConnection );
 	}
 
@@ -36,7 +44,7 @@ void FFmpegForm::on_start()
 
 void FFmpegForm::on_stop()
 {
-	p_controller->termination();
+	p_controller->terminate();
 }
 
 void FFmpegForm::on_trigger()
@@ -47,4 +55,10 @@ void FFmpegForm::on_trigger()
 void FFmpegForm::on_sig_value( QString string )
 {
 	statusBar()->showMessage( string );
+}
+
+void FFmpegForm::on_direct()
+{
+	qDebug() << __FUNCTION__ << __LINE__;
+	p_controller->directStore();
 }

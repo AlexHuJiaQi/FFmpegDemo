@@ -21,13 +21,14 @@ public slots:
 	virtual void doWork()override;
 
 private:
+	void parse_packet( AVPacket* p_packet );
+
+private:
 	double time_diff_a = 0;
 	double time_diff_v = 0;
 	double time_trig_a = 0;
 	double time_trig_v = 0;
 	AVPacket* p_packet = nullptr;
-
-	void parse_packet( AVPacket* p_packet );
 
 private:
 	bool b_trigger;

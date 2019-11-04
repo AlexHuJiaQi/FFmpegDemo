@@ -29,7 +29,7 @@ void FFmpegReader::doWork()
 	/******************************************************************************************/
 
 	while ( true ) {
-		if ( isRunning() ) {
+		if ( isStared() ) {
 			p_packet = av_packet_alloc();
 			if ( p_packet == NULL ) {
 				continue;
@@ -49,16 +49,16 @@ void FFmpegReader::doWork()
 		}
 		else {
 			// 停止读数据
-			getParameter()->b_read_finish = true;
+			getParameter()->b_r_finish = true;
 			/////////////////////////////////////
 			getParameter()->mutex->lock();
-			getParameter()->bufferEmpty->wakeAll();
+			getParameter()->_buffer_empty->wakeAll();
 			getParameter()->mutex->unlock();
 
 			/////////////////////////////////////
-			if ( !getParameter()->b_write_finish ) {
+			if ( !getParameter()->b_w_finish ) {
 				getParameter()->mutex->lock();
-				getParameter()->m_write_finish->wait( getParameter()->mutex );
+				getParameter()->_write_finish->wait( getParameter()->mutex );
 				getParameter()->mutex->unlock();
 			}
 
@@ -84,7 +84,7 @@ void FFmpegReader::parse_packet( AVPacket* p_packet )
 		if ( t_type == AVMEDIA_TYPE_VIDEO ) {
 			getParameter()->v_packet_list.append( p_packet );
 			time_diff_v = ( av_q2d( t_timebase ) * p_packet->pts ) - ( av_q2d( t_timebase ) * getParameter()->v_packet_list.first()->pts );
-			if ( time_diff_v >= getParameter()->Cache_Interval_1 ) {
+			if ( time_diff_v >= getParameter()->_interval_before_trig ) {
 				AVPacket* pkt = getParameter()->v_packet_list.takeFirst();
 				av_packet_free( &pkt );
 			}
@@ -92,7 +92,7 @@ void FFmpegReader::parse_packet( AVPacket* p_packet )
 		else if ( t_type == AVMEDIA_TYPE_AUDIO ) {
 			getParameter()->a_packet_list.append( p_packet );
 			time_diff_a = ( av_q2d( t_timebase ) * p_packet->pts ) - ( av_q2d( t_timebase ) * getParameter()->a_packet_list.first()->pts );
-			if ( time_diff_a >= getParameter()->Cache_Interval_1 ) {
+			if ( time_diff_a >= getParameter()->_interval_before_trig ) {
 				AVPacket* pkt = getParameter()->a_packet_list.takeFirst();
 				av_packet_free( &pkt );
 			}
@@ -104,7 +104,7 @@ void FFmpegReader::parse_packet( AVPacket* p_packet )
 			if ( 0 == time_trig_v ) { time_trig_v = p_packet->pts * av_q2d( t_timebase ); }
 			time_diff_v = ( av_q2d( t_timebase ) * p_packet->pts ) - time_trig_v;
 			getParameter()->v_packet_list.append( p_packet );
-			getParameter()->bufferEmpty->wakeAll();
+			getParameter()->_buffer_empty->wakeAll();
 			getParameter()->mutex->unlock();
 		}
 		else if ( t_type == AVMEDIA_TYPE_AUDIO ) {
@@ -112,21 +112,21 @@ void FFmpegReader::parse_packet( AVPacket* p_packet )
 			if ( 0 == time_trig_a ) { time_trig_a = p_packet->pts * av_q2d( t_timebase ); }
 			time_diff_a = ( av_q2d( t_timebase ) * p_packet->pts ) - time_trig_a;
 			getParameter()->a_packet_list.append( p_packet );
-			getParameter()->bufferEmpty->wakeAll();
+			getParameter()->_buffer_empty->wakeAll();
 			getParameter()->mutex->unlock();
 		}
 
-		if ( time_diff_v >= getParameter()->Cache_Interval_2 &&
-			 time_diff_a >= getParameter()->Cache_Interval_2 ) {
+		if ( time_diff_v >= getParameter()->_interval_after_trig &&
+			 time_diff_a >= getParameter()->_interval_after_trig ) {
 			qDebug() << "#############################################################" << "Cache 2 Finish";
 			/////////////////////////////////////
 			getParameter()->mutex->lock();
-			getParameter()->b_read_finish = true;
-			getParameter()->bufferEmpty->wakeAll();
+			getParameter()->b_r_finish = true;
+			getParameter()->_buffer_empty->wakeAll();
 			getParameter()->mutex->unlock();
 			/////////////////////////////////////
 			getParameter()->mutex->lock();
-			getParameter()->m_write_finish->wait( getParameter()->mutex );
+			getParameter()->_write_finish->wait( getParameter()->mutex );
 			getParameter()->mutex->unlock();
 
 			clrTrigger();

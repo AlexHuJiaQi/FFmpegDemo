@@ -19,29 +19,27 @@ extern "C" {
 struct FFmpegParameter
 {
 	bool b_start;
-	bool b_read_finish;
-	bool b_write_finish;
+	bool b_r_finish;
+	bool b_w_finish;
 
 	QByteArray i_filename;
 	QByteArray o_filename;
 
 	// 缓存间隔
-	uint32_t Cache_Interval_1;
-	uint32_t Cache_Interval_2;
+	uint32_t _interval_before_trig;
+	uint32_t _interval_after_trig;
 
 	// 线程控制
 	QMutex* mutex;
 
-	QWaitCondition* bufferEmpty;
-	QWaitCondition* m_write_finish;
+	QWaitCondition* _buffer_empty;
+	QWaitCondition* _write_finish;
 
-	QThread* thread__read;
-	QThread* thread_write;
+	QThread* r_Thread;
+	QThread* w_Thread;
 
 	AVFormatContext* i_fmt_ctx;
 	AVFormatContext* o_fmt_ctx;
-
-	// QList<AVPacket*> av_packet_list;
 
 	QList<AVPacket*> a_packet_list;
 	QList<AVPacket*> v_packet_list;
@@ -61,11 +59,10 @@ public:
 	virtual void setParameter( FFmpegParameter* para )final { m_para = para; }
 	virtual FFmpegParameter* getParameter()final { return m_para; }
 
-	virtual void doRecord() final { emit execute(); }
-
-	virtual bool isRunning()   final { return m_para->b_start; }
-	virtual void start()       final { m_para->b_start = true; }
-	virtual void termination() final { m_para->b_start = false; }
+	virtual void doRecord()    final { emit execute(); }
+	virtual bool isStared()    final { return m_para->b_start; }
+	virtual void doStart()     final { m_para->b_start = true; }
+	virtual void doTerminate() final { m_para->b_start = false; }
 
 signals:
 	void execute();
